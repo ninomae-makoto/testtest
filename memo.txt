@@ -9,3 +9,47 @@ echo "$JWT" | jwt_verify_es256.sh -k ec_public.pem
 
 # 成功時: "OK: signature valid" と header/payload を表示
 # 失敗時: exit code 1（-q 指定でメッセージ抑制）
+
+
+#########################################################
+# 1) 鍵（P-256）を用意
+openssl ecparam -name prime256v1 -genkey -noout -out ec_private.pem
+openssl pkey -in ec_private.pem -pubout -out ec_public.pem
+
+# 2) ペイロードJSON（文字列）を用意（kidはスクリプト側で空文字が付与されます）
+payload='{"iss":"http://example.com","sub":"barch","exp":111111111,"iat":111111111,"jti":"some-uuid"}'
+
+# 3) 署名してJWTを作成（ES256）
+JWT=$(./jwt_es256.sh -k ec_private.pem -p "$payload")
+echo "JWT: $JWT"
+
+# 4) 途中経過の可視化：header/payload/signature を分割
+IFS='.' read -r H64 P64 S64 <<<"$JWT"
+echo "H64: $H64"
+echo "P64: $P64"
+echo "S64: $S64"
+
+# 5) base64url デコード関数（確認用）
+b64url_to_bin() {
+  local s="$1" pad
+  s="${s//- /+}"; s="${s//_//}"        # ←スペース誤変換防止のため次行で再代入
+  s="${1//-/+}"; s="${s//_//}"
+  pad=$(( (4 - ${#s} % 4) % 4 ))
+  printf '%s' "$s" | awk -v p="$pad" '{ printf "%s", $0; for(i=0;i<p;i++) printf "=" }' \
+    | openssl base64 -d -A
+}
+
+# 6) ヘッダとペイロードの中身を確認
+echo "Decoded header:"
+b64url_to_bin "$H64" | jq .
+
+echo "Decoded payload:"
+b64url_to_bin "$P64" | jq .
+
+# 7) 署名サイズ（r||s 合わせて 64 バイトであること）
+printf "Signature bytes: "
+b64url_to_bin "$S64" | wc -c   # => 64 と表示されればOK
+
+# 8) 検証（公開鍵でOK）
+./jwt_verify_es256.sh -k ec_public.pem -j "$JWT"
+# => OK: signature valid / header / payload が表示されます
