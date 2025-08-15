@@ -1,0 +1,11 @@
+# 公開鍵 or 秘密鍵（P-256）を用意
+# 公開鍵だけでもOK。秘密鍵でも中からpubを抽出して検証します。
+openssl ecparam -name prime256v1 -genkey -noout -out ec_private.pem
+openssl pkey -in ec_private.pem -pubout -out ec_public.pem
+
+# 署名済みJWTを検証（-j で渡す or 標準入力）
+jwt_verify_es256.sh -k ec_public.pem -j "$JWT"
+echo "$JWT" | jwt_verify_es256.sh -k ec_public.pem
+
+# 成功時: "OK: signature valid" と header/payload を表示
+# 失敗時: exit code 1（-q 指定でメッセージ抑制）
