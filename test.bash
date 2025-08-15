@@ -127,6 +127,24 @@ main() {
   tmpdir="$(mktemp -d)"
 
   # 対象データの取得。失敗時はログを出して終了コード 1。
+  # 外側： (ID1, ID2) ごとの1行 + JSON配列(rows_json)
+  psql -X -At -f group.sql "$DB_URL" \
+  | while IFS=$'\t' read -r id1 id2 rows_json; do
+    echo "=== GROUP id1=$id1 id2=$id2 ==="
+  
+    # 内側： rows_json の各要素(=1行のオブジェクト)を回す
+    jq -c '.[]' <<<"$rows_json" \
+    | while IFS= read -r row; do
+        # 必要な列を取り出す（例：other）
+        other=$(jq -r '.other // empty' <<<"$row")
+  
+        echo "  row other=$other"
+        # TODO: ここで処理（API呼び出しや UPDATE など）
+        # 例）psql -X "$DB_URL" -v id1="$id1" -v id2="$id2" -v other="$other" \
+        #        -c "UPDATE your_table SET processed=true
+        #            WHERE id1 = :'id1' AND id2 = :'id2' AND other = :'other';"
+      done
+  done
   local items
   items="$(fetch_items)" || { log "fetch failed"; return 1; }
 
