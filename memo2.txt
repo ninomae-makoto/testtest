@@ -11,3 +11,23 @@
     log_err "$row" "$(tr -d '\r' < "$tmp_err")"
     continue
   fi
+
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+# JWTトークン（事前に生成済み）
+JWT="$1"
+
+# クエリパラメータ（例）
+verifier="abc123"
+ric="9999"
+leavedate="2025-08-18"
+
+# リクエスト先
+BASE_URL="http://example.com"
+
+# GETリクエスト
+curl -sS -X GET \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL?verifier=$verifier&ric=$ric&leavedate=$leavedate"
