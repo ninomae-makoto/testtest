@@ -31,3 +31,29 @@ BASE_URL="http://example.com"
 curl -sS -X GET \
   -H "Authorization: Bearer $JWT" \
   "$BASE_URL?verifier=$verifier&ric=$ric&leavedate=$leavedate"
+
+
+
+cmd="curl -sS -X GET \
+  -H \"Authorization: Bearer $JWT\" \
+  \"$BASE_URL?verifier=$verifier&ric=$ric&leavedate=$leavedate\""
+
+# そのまま表示
+echo "$cmd"
+
+
+# レスポンス本文を tmp に保存しつつ HTTPステータスを取得
+tmp_body="$(mktemp)"
+http_code="$(curl -sS -o "$tmp_body" -w "%{http_code}" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL?verifier=$verifier&ric=$ric&leavedate=$leavedate")"
+
+# 判定
+if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then
+  echo "成功: HTTP $http_code"
+  cat "$tmp_body"
+else
+  echo "失敗: HTTP $http_code" >&2
+  cat "$tmp_body" >&2
+  exit 1
+fi
