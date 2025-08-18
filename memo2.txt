@@ -1,0 +1,13 @@
+  # 実行：stderrを一旦ファイルに取り出してから成否判定
+  tmp_err="$(mktemp)"; trap 'rm -f "$tmp_err"' RETURN
+  new_id="$(
+    psql -X -q -At "$DB_URL" \
+      -v id1="$id1" -v id2="$id2" -v other="$other" \
+      -f sql/insert_item.sql \
+      2>"$tmp_err" || true
+  )"
+  rc=$?
+  if (( rc != 0 )); then
+    log_err "$row" "$(tr -d '\r' < "$tmp_err")"
+    continue
+  fi
